@@ -1,21 +1,27 @@
-#include "rclcpp/rclcpp.hpp"
 #include <cstdio>
 
-class Runtime
+#include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"
+#include "sensor_msgs/msg/image.hpp"
+
+#include "acquire.h"
+
+class Runtime : public rclcpp::Node
 {
 public:
-  Runtime() {
-
+  Runtime() : Node("streamer"), runtime_{}
+  {
   }
 
 private:
-  int foo_;
+  AcquireRuntime runtime_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
 };
 
-int main(int argc, char ** argv)
+int main(int argc, char** argv)
 {
-  (void) argc;
-  (void) argv;
+  (void)argc;
+  (void)argv;
 
   printf("hello world acquire package\n");
   return 0;
