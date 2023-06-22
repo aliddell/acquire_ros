@@ -5,8 +5,11 @@
 #include <stdexcept>
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/qos.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "sensor_msgs/msg/image.hpp"
+#include "sensor_msgs/image_encodings.hpp"
+#include "sensor_msgs/fill_image.hpp"
 
 #include "acquire.h"
 #include "device/hal/device.manager.h"
@@ -17,6 +20,11 @@ class AcquireStreamer;
 
 namespace
 {
+size_t consumed_bytes(const VideoFrame* const cur, const VideoFrame* const end)
+{
+  return (uint8_t*)end - (uint8_t*)cur;
+};
+
 VideoFrame* next(VideoFrame* const cur)
 {
   return (VideoFrame*)(((uint8_t*)cur) + cur->bytes_of_frame);
@@ -31,7 +39,7 @@ void reporter(int is_error, const char* file, int line, const char* function, co
   }
   else
   {
-    RCLCPP_INFO(logger, "%s(%d) - %s: %s\n", file, line, function, msg);
+    RCLCPP_DEBUG(logger, "%s(%d) - %s: %s\n", file, line, function, msg);
   }
 }
 }  // namespace
@@ -97,7 +105,8 @@ class AcquireStreamer : public rclcpp::Node
 public:
   AcquireStreamer() : Node("streamer"), runtime_{ nullptr }, props_{ 0 }, nframes_{ 0 }
   {
-    publisher_ = this->create_publisher<sensor_msgs::msg::Image>("microscope", 10);
+    rclcpp::QoS qos(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
+    publisher_ = this->create_publisher<sensor_msgs::msg::Image>("microscope", qos);
     timer_ = this->create_wall_timer(10ms, std::bind(&AcquireStreamer::timer_callback, this));
     configure_stream();
     acquire_start(runtime_);
@@ -141,7 +150,7 @@ private:
       .x = 64,
       .y = 48,
     };
-    props_.video[0].camera.settings.exposure_time_us = 1e3;
+    props_.video[0].camera.settings.exposure_time_us = 1e4;
     props_.video[0].max_frame_count = UINT64_MAX;
 
     OK(acquire_configure(runtime_, &props_));
@@ -158,14 +167,26 @@ private:
 
     VideoFrame *beg, *end, *cur;
     OK(acquire_map_read(runtime_, 0, &beg, &end));
+    DEBUG("stream %d got %zu frames", 0, (size_t)((uint8_t*)end - (uint8_t*)beg));
     for (cur = beg; cur < end; cur = next(cur))
     {
-      DEBUG("stream %d counting frame w id %d", 0, cur->frame_id);
-      ASSERT_EQ(uint32_t, "%lu", cur->shape.dims.width, props_.video[0].camera.settings.shape.x);
-      ASSERT_EQ(uint32_t, "%lu", cur->shape.dims.height, props_.video[0].camera.settings.shape.y);
+      DEBUG("stream %d counting frame w id %lu", 0, cur->frame_id);
+      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.width, props_.video[0].camera.settings.shape.x);
+      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.height, props_.video[0].camera.settings.shape.y);
+
+      sensor_msgs::msg::Image msg;
+      CHECK(sensor_msgs::fillImage(msg, sensor_msgs::image_encodings::MONO8, cur->shape.dims.height,
+                                   cur->shape.dims.width, cur->shape.strides.height, cur->data));
+
+      DEBUG("Publishing: '%s'", msg.header.frame_id.c_str());
+      publisher_->publish(msg);
       ++nframes_;
     }
-    sensor_msgs::msg::Image msg;
+
+    auto n = (uint32_t)consumed_bytes(beg, end);
+    OK(acquire_unmap_read(runtime_, 0, n));
+    if (n)
+      DEBUG("stream %d consumed bytes %d", 0, n);
   }
 };
 
