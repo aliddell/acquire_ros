@@ -21,3 +21,18 @@ target_link_libraries(streamer
 
 install(TARGETS streamer
   DESTINATION lib/${PROJECT_NAME})
+
+add_executable(viewer viewer.cpp)
+ament_target_dependencies(viewer
+                          rclcpp
+                          std_msgs
+                          sensor_msgs
+                          OpenCV)
+target_include_directories(viewer PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+  $<INSTALL_INTERFACE:include>
+  ${OpenCV_INCLUDE_DIRS})
+target_compile_features(viewer PUBLIC c_std_11 cxx_std_20)  # Require C11 and C++20
+
+install(TARGETS viewer
+  DESTINATION lib/${PROJECT_NAME})

@@ -16,8 +16,6 @@
 
 using namespace std::chrono_literals;
 
-class AcquireStreamer;
-
 namespace
 {
 size_t consumed_bytes(const VideoFrame* const cur, const VideoFrame* const end)
@@ -51,7 +49,6 @@ void reporter(int is_error, const char* file, int line, const char* function, co
     snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
     RCLCPP_DEBUG(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                            \
   } while (0)
-
 #define LOG(...)                                                                                                       \
   do                                                                                                                   \
   {                                                                                                                    \
@@ -73,6 +70,7 @@ void reporter(int is_error, const char* file, int line, const char* function, co
     snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
     RCLCPP_ERROR(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                            \
   } while (0)
+
 #define EXPECT(e, ...)                                                                                                 \
   do                                                                                                                   \
   {                                                                                                                    \
@@ -147,8 +145,8 @@ private:
     props_.video[0].camera.settings.binning = 1;
     props_.video[0].camera.settings.pixel_type = SampleType_u8;
     props_.video[0].camera.settings.shape = {
-      .x = 64,
-      .y = 48,
+      .x = 1280,
+      .y = 720,
     };
     props_.video[0].camera.settings.exposure_time_us = 1e4;
     props_.video[0].max_frame_count = UINT64_MAX;
@@ -178,7 +176,7 @@ private:
       CHECK(sensor_msgs::fillImage(msg, sensor_msgs::image_encodings::MONO8, cur->shape.dims.height,
                                    cur->shape.dims.width, cur->shape.strides.height, cur->data));
 
-      DEBUG("Publishing: '%s'", msg.header.frame_id.c_str());
+      DEBUG("Publishing: '%lu'", cur->frame_id);
       publisher_->publish(msg);
       ++nframes_;
     }
