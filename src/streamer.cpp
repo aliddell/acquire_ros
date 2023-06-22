@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdint>
 #include <chrono>
 #include <functional>
 #include <stdexcept>
@@ -12,10 +13,10 @@
 
 using namespace std::chrono_literals;
 
+class AcquireStreamer;
+
 namespace
 {
-std::shared_ptr<rclcpp::Node> streamer;
-
 VideoFrame* next(VideoFrame* const cur)
 {
   return (VideoFrame*)(((uint8_t*)cur) + cur->bytes_of_frame);
@@ -23,31 +24,47 @@ VideoFrame* next(VideoFrame* const cur)
 
 void reporter(int is_error, const char* file, int line, const char* function, const char* msg)
 {
-  fprintf(is_error ? stderr : stdout, "%s%s(%d) - %s: %s\n", is_error ? "ERROR " : "", file, line, function, msg);
-}
-
-void aq_logger(int is_error, const char* file, int line, const char* function, const char* fmt, ...)
-{
-  char buf[1024] = { 0 };
-  va_list ap;
-  va_start(ap, fmt);
-  vsnprintf(buf, sizeof(buf), fmt, ap);  // NOLINT
-  va_end(ap);
-
+  auto logger = rclcpp::get_logger("acquire_inner");
   if (is_error)
   {
-    RCLCPP_ERROR(streamer->get_logger(), "ERROR %s(%d) - %s: %s\n", file, line, function, buf);
+    RCLCPP_ERROR(logger, "%s(%d) - %s: %s\n", file, line, function, msg);
   }
   else
   {
-    RCLCPP_INFO(streamer->get_logger(), "%s(%d) - %s: %s\n", file, line, function, buf);
+    RCLCPP_INFO(logger, "%s(%d) - %s: %s\n", file, line, function, msg);
   }
 }
 }  // namespace
 
-#define L aq_logger
-#define LOG(...) L(0, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
-#define ERR(...) L(1, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
+#define DEBUG(...)                                                                                                     \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    char args[1 << 8] = { 0 };                                                                                         \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
+    RCLCPP_DEBUG(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                            \
+  } while (0)
+
+#define LOG(...)                                                                                                       \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    char args[1 << 8] = { 0 };                                                                                         \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
+    RCLCPP_INFO(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                             \
+  } while (0)
+#define WARN(...)                                                                                                      \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    char args[1 << 8] = { 0 };                                                                                         \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
+    RCLCPP_WARN(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                             \
+  } while (0)
+#define ERR(...)                                                                                                       \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    char args[1 << 8] = { 0 };                                                                                         \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
+    RCLCPP_ERROR(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                            \
+  } while (0)
 #define EXPECT(e, ...)                                                                                                 \
   do                                                                                                                   \
   {                                                                                                                    \
@@ -62,6 +79,16 @@ void aq_logger(int is_error, const char* file, int line, const char* function, c
 #define CHECK(e) EXPECT(e, "Expression evaluated as false: %s", #e)
 #define OK(e) CHECK(AcquireStatus_Ok == (e))
 #define DEVOK(e) CHECK(Device_Ok == (e))
+
+/// Check that a==b
+/// example: `ASSERT_EQ(int,"%d",42,meaning_of_life())`
+#define ASSERT_EQ(T, fmt, a, b)                                                                                        \
+  do                                                                                                                   \
+  {                                                                                                                    \
+    T a_ = (T)(a);                                                                                                     \
+    T b_ = (T)(b);                                                                                                     \
+    EXPECT(a_ == b_, "Expected %s == %s but " fmt " != " fmt, #a, #b, a_, b_);                                         \
+  } while (0)
 
 #define SIZED(str) str, sizeof(str)
 
@@ -78,7 +105,7 @@ public:
 
   ~AcquireStreamer()
   {
-    LOG("Destructor called");
+    DEBUG("Destructor called.");
     if (runtime_)
     {
       acquire_abort(runtime_);
@@ -102,28 +129,24 @@ private:
     auto dm = acquire_device_manager(runtime_);
     CHECK(dm);
 
-    AcquireProperties props = { 0 };
-    OK(acquire_get_configuration(runtime_, &props));
+    OK(acquire_get_configuration(runtime_, &props_));
 
     DEVOK(device_manager_select(dm, DeviceKind_Camera, SIZED("simulated.*random.*") - 1,
-                                &props.video[0].camera.identifier));
-    DEVOK(device_manager_select(dm, DeviceKind_Storage, SIZED("Trash") - 1, &props.video[0].storage.identifier));
+                                &props_.video[0].camera.identifier));
+    DEVOK(device_manager_select(dm, DeviceKind_Storage, SIZED("Trash") - 1, &props_.video[0].storage.identifier));
 
-    OK(acquire_configure(runtime_, &props));
-
-    AcquirePropertyMetadata metadata = { 0 };
-    OK(acquire_get_configuration_metadata(runtime_, &metadata));
-
-    props.video[0].camera.settings.binning = 1;
-    props.video[0].camera.settings.pixel_type = SampleType_u8;
-    props.video[0].camera.settings.shape = {
+    props_.video[0].camera.settings.binning = 1;
+    props_.video[0].camera.settings.pixel_type = SampleType_u8;
+    props_.video[0].camera.settings.shape = {
       .x = 64,
       .y = 48,
     };
-    props.video[0].camera.settings.exposure_time_us = 1e4;
-    props.video[0].max_frame_count = 0;
+    props_.video[0].camera.settings.exposure_time_us = 1e3;
+    props_.video[0].max_frame_count = UINT64_MAX;
 
-    OK(acquire_configure(runtime_, &props));
+    OK(acquire_configure(runtime_, &props_));
+
+    DEBUG("Configured.");
   }
 
   void timer_callback()
@@ -137,9 +160,9 @@ private:
     OK(acquire_map_read(runtime_, 0, &beg, &end));
     for (cur = beg; cur < end; cur = next(cur))
     {
-      LOG("stream %d counting frame w id %d", 0, cur->frame_id);
-      CHECK(cur->shape.dims.width == props_.video[0].camera.settings.shape.x);
-      CHECK(cur->shape.dims.height == props_.video[0].camera.settings.shape.y);
+      DEBUG("stream %d counting frame w id %d", 0, cur->frame_id);
+      ASSERT_EQ(uint32_t, "%lu", cur->shape.dims.width, props_.video[0].camera.settings.shape.x);
+      ASSERT_EQ(uint32_t, "%lu", cur->shape.dims.height, props_.video[0].camera.settings.shape.y);
       ++nframes_;
     }
     sensor_msgs::msg::Image msg;
@@ -149,7 +172,7 @@ private:
 int main(int argc, char** argv)
 {
   rclcpp::init(argc, argv);
-  streamer = std::make_shared<AcquireStreamer>();
+  auto streamer = std::make_shared<AcquireStreamer>();
   rclcpp::spin(streamer);
   rclcpp::shutdown();
 
