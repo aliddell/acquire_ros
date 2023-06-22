@@ -1,4 +1,5 @@
-#include <cstdio>
+#include <chrono>
+#include <functional>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -6,23 +7,28 @@
 
 #include "acquire.h"
 
-class Runtime : public rclcpp::Node
+using namespace std::chrono_literals;
+
+class AcquireStreamer : public rclcpp::Node
 {
 public:
-  Runtime() : Node("streamer"), runtime_{}
+  AcquireStreamer() : Node("streamer"), runtime_{}
   {
+    publisher_ = this->create_publisher<sensor_msgs::msg::Image>("microscope", 10);
   }
 
 private:
   AcquireRuntime runtime_;
+
+  rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
 };
 
 int main(int argc, char** argv)
 {
-  (void)argc;
-  (void)argv;
+  rclcpp::init(argc, argv);
+  rclcpp::spin(std::make_shared<AcquireStreamer>());
+  rclcpp::shutdown();
 
-  printf("hello world acquire package\n");
   return 0;
 }
