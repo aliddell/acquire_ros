@@ -1,6 +1,3 @@
-[submodule "src/acquire-core-libs"]
-	path = src/acquire-core-libs
-	url = ../acquire-core-libs.git
 [submodule "src/acquire-driver-common"]
 	path = src/acquire-driver-common
 	url = ../acquire-driver-common.git
