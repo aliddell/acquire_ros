@@ -138,7 +138,7 @@ private:
 
     OK(acquire_get_configuration(runtime_, &props_));
 
-    DEVOK(device_manager_select(dm, DeviceKind_Camera, SIZED("simulated.*random.*") - 1,
+    DEVOK(device_manager_select(dm, DeviceKind_Camera, SIZED(".*BFLY.*") - 1,
                                 &props_.video[0].camera.identifier));
     DEVOK(device_manager_select(dm, DeviceKind_Storage, SIZED("Trash") - 1, &props_.video[0].storage.identifier));
 
