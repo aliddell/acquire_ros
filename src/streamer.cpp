@@ -1,3 +1,4 @@
+#include <array>
 #include <cstdio>
 #include <cstdint>
 #include <chrono>
@@ -103,10 +104,14 @@ class AcquireStreamer : public rclcpp::Node
 public:
   AcquireStreamer() : Node("streamer"), runtime_{ nullptr }, props_{ 0 }, nframes_{ 0 }
   {
+    this->declare_parameter("camera0", ".*simulated: uniform random.*");
+    this->declare_parameter("camera1", ".*simulated: radial sin.*");
+
     rclcpp::QoS qos(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
-    publisher_ = this->create_publisher<sensor_msgs::msg::Image>("microscope", qos);
+    publishers_.at(0) = this->create_publisher<sensor_msgs::msg::Image>("stream0", qos);
+    publishers_.at(1) = this->create_publisher<sensor_msgs::msg::Image>("stream1", qos);
     timer_ = this->create_wall_timer(10ms, std::bind(&AcquireStreamer::timer_callback, this));
-    configure_stream();
+    configure_streams();
     acquire_start(runtime_);
   }
 
@@ -125,33 +130,72 @@ private:
   AcquireProperties props_;
 
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+  std::array<rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr, 2> publishers_;
 
   uint64_t nframes_;
 
-  void configure_stream()
-  {
-    CHECK(runtime_ = acquire_init(reporter));
-
+  void configure_stream(uint8_t stream) {
     auto dm = acquire_device_manager(runtime_);
     CHECK(dm);
 
+    AcquirePropertyMetadata meta = { 0 };
+    OK(acquire_get_configuration_metadata(runtime_, &meta));
+
+    // camera configuration
+    const std::string param = "camera" + std::to_string(stream);
+    const std::string camera = this->get_parameter(param).as_string();
+    DEVOK(device_manager_select(dm, DeviceKind_Camera, camera.c_str(), camera.size(),
+                                &props_.video[stream].camera.identifier));
+                                
+    props_.video[stream].camera.settings.binning = 1;
+    props_.video[stream].camera.settings.pixel_type = SampleType_u8;
+    props_.video[stream].camera.settings.shape.x = 640;
+    props_.video[stream].camera.settings.shape.y = 480;
+    props_.video[stream].camera.settings.exposure_time_us = 1e4;
+    props_.video[stream].max_frame_count = UINT64_MAX;
+
+    // storage configuration
+    DEVOK(device_manager_select(dm, DeviceKind_Storage, SIZED("Trash") - 1,
+                                &props_.video[stream].storage.identifier));
+  }
+
+  void configure_streams()
+  {
+    CHECK(runtime_ = acquire_init(reporter));
+
     OK(acquire_get_configuration(runtime_, &props_));
 
-    DEVOK(device_manager_select(dm, DeviceKind_Camera, SIZED(".*BFLY.*") - 1,
-                                &props_.video[0].camera.identifier));
-    DEVOK(device_manager_select(dm, DeviceKind_Storage, SIZED("Trash") - 1, &props_.video[0].storage.identifier));
-
-    props_.video[0].camera.settings.binning = 1;
-    props_.video[0].camera.settings.pixel_type = SampleType_u8;
-    props_.video[0].camera.settings.shape.x = 1280;
-    props_.video[0].camera.settings.shape.y = 720;
-    props_.video[0].camera.settings.exposure_time_us = 1e4;
-    props_.video[0].max_frame_count = UINT64_MAX;
+    configure_stream(0);
+    configure_stream(1);
 
     OK(acquire_configure(runtime_, &props_));
 
     DEBUG("Configured.");
+  }
+
+  void send_data(uint8_t stream) {
+    VideoFrame *beg, *end, *cur;
+    OK(acquire_map_read(runtime_, stream, &beg, &end));
+    DEBUG("stream %d got %zu frames", stream, (size_t)((uint8_t*)end - (uint8_t*)beg));
+    for (cur = beg; cur < end; cur = next(cur))
+    {
+      DEBUG("stream %d counting frame w id %lu", stream, cur->frame_id);
+      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.width, props_.video[stream].camera.settings.shape.x);
+      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.height, props_.video[stream].camera.settings.shape.y);
+
+      sensor_msgs::msg::Image msg;
+      CHECK(sensor_msgs::fillImage(msg, sensor_msgs::image_encodings::MONO8, cur->shape.dims.height,
+                                   cur->shape.dims.width, cur->shape.strides.height, cur->data));
+
+      DEBUG("Publishing: '%lu'", cur->frame_id);
+      publishers_.at(stream)->publish(msg);
+      ++nframes_;
+    }
+
+    auto n = (uint32_t)consumed_bytes(beg, end);
+    OK(acquire_unmap_read(runtime_, stream, n));
+    if (n)
+      DEBUG("stream %d consumed bytes %d", stream, n);
   }
 
   void timer_callback()
@@ -161,29 +205,10 @@ private:
       return;
     }
 
-    VideoFrame *beg, *end, *cur;
-    OK(acquire_map_read(runtime_, 0, &beg, &end));
-    DEBUG("stream %d got %zu frames", 0, (size_t)((uint8_t*)end - (uint8_t*)beg));
-    for (cur = beg; cur < end; cur = next(cur))
-    {
-      DEBUG("stream %d counting frame w id %lu", 0, cur->frame_id);
-      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.width, props_.video[0].camera.settings.shape.x);
-      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.height, props_.video[0].camera.settings.shape.y);
-
-      sensor_msgs::msg::Image msg;
-      CHECK(sensor_msgs::fillImage(msg, sensor_msgs::image_encodings::MONO8, cur->shape.dims.height,
-                                   cur->shape.dims.width, cur->shape.strides.height, cur->data));
-
-      DEBUG("Publishing: '%lu'", cur->frame_id);
-      publisher_->publish(msg);
-      ++nframes_;
-    }
-
-    auto n = (uint32_t)consumed_bytes(beg, end);
-    OK(acquire_unmap_read(runtime_, 0, n));
-    if (n)
-      DEBUG("stream %d consumed bytes %d", 0, n);
+    send_data(0);
+    send_data(1);
   }
+    
 };
 
 int main(int argc, char** argv)

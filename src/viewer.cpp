@@ -1,3 +1,4 @@
+#include <array>
 #include <functional>
 
 #include "rclcpp/rclcpp.hpp"
@@ -39,24 +40,38 @@
 class AcquireViewer : public rclcpp::Node
 {
 public:
-  AcquireViewer() : Node("viewer"), window_name_{ "acquire viewer" }
+  AcquireViewer() : Node("viewer")
   {
+    window_names_ = { "stream 0", "stream 1" };
     rclcpp::QoS qos(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
-    cv::namedWindow(window_name_, cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
-    subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
-        "microscope", qos, std::bind(&AcquireViewer::topic_callback, this, std::placeholders::_1));
+    cv::namedWindow(window_names_.at(0), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
+    cv::namedWindow(window_names_.at(1), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
+    subscriptions_.at(0) = this->create_subscription<sensor_msgs::msg::Image>(
+        "stream0", qos, std::bind(&AcquireViewer::stream0, this, std::placeholders::_1));
+    subscriptions_.at(1) = this->create_subscription<sensor_msgs::msg::Image>(
+        "stream1", qos, std::bind(&AcquireViewer::stream1, this, std::placeholders::_1));
   }
 
 private:
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
-  std::string window_name_;
+  std::array<rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr, 2> subscriptions_;
+  std::array<std::string, 2> window_names_;
 
-  void topic_callback(sensor_msgs::msg::Image::SharedPtr msg)
+  void topic_callback(int stream, sensor_msgs::msg::Image::SharedPtr msg)
   {
     DEBUG("Got an image: %u x %u, %lu bytes", msg->width, msg->height, msg->data.size());
     cv::Mat img(msg->height, msg->width, CV_8U, (void*)msg->data.data());
-    cv::imshow(window_name_, img);
+    cv::imshow(window_names_.at(stream), img);
     cv::waitKey(10);
+  }
+
+  void stream0(sensor_msgs::msg::Image::SharedPtr msg)
+  {
+    topic_callback(0, msg);
+  }
+
+  void stream1(sensor_msgs::msg::Image::SharedPtr msg)
+  {
+    topic_callback(1, msg);
   }
 };
 
