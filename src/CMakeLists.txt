@@ -1,6 +1,8 @@
+set(NOTEST TRUE)
 aq_require(acquire-core-libs)
 aq_require(acquire-driver-common)
 aq_require(acquire-video-runtime)
+set(NOTEST FALSE)
 
 add_executable(streamer streamer.cpp)
 ament_target_dependencies(streamer
