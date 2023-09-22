@@ -9,7 +9,7 @@ ament_target_dependencies(streamer
 target_include_directories(streamer PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(streamer PUBLIC c_std_11 cxx_std_20)  # Require C11 and C++20
+target_compile_features(streamer PUBLIC c_std_11 cxx_std_17)  # Require C11 and C++17
 
 target_link_libraries(streamer
     acquire-core-logger
@@ -32,7 +32,7 @@ target_include_directories(viewer PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
   $<INSTALL_INTERFACE:include>
   ${OpenCV_INCLUDE_DIRS})
-target_compile_features(viewer PUBLIC c_std_11 cxx_std_20)  # Require C11 and C++20
+target_compile_features(viewer PUBLIC c_std_11 cxx_std_17)  # Require C11 and C++20
 
 install(TARGETS viewer
   DESTINATION lib/${PROJECT_NAME})

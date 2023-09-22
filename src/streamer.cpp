@@ -144,10 +144,8 @@ private:
 
     props_.video[0].camera.settings.binning = 1;
     props_.video[0].camera.settings.pixel_type = SampleType_u8;
-    props_.video[0].camera.settings.shape = {
-      .x = 1280,
-      .y = 720,
-    };
+    props_.video[0].camera.settings.shape.x = 1280;
+    props_.video[0].camera.settings.shape.y = 720;
     props_.video[0].camera.settings.exposure_time_us = 1e4;
     props_.video[0].max_frame_count = UINT64_MAX;
 

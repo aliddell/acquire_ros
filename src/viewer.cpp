@@ -51,10 +51,10 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
   std::string window_name_;
 
-  void topic_callback(const sensor_msgs::msg::Image& msg)
+  void topic_callback(sensor_msgs::msg::Image::SharedPtr msg)
   {
-    DEBUG("Got an image: %u x %u, %lu bytes", msg.width, msg.height, msg.data.size());
-    cv::Mat img(msg.height, msg.width, CV_8U, (void*)msg.data.data());
+    DEBUG("Got an image: %u x %u, %lu bytes", msg->width, msg->height, msg->data.size());
+    cv::Mat img(msg->height, msg->width, CV_8U, (void*)msg->data.data());
     cv::imshow(window_name_, img);
     cv::waitKey(10);
   }
