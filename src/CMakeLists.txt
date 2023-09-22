@@ -1,3 +1,4 @@
+aq_require(acquire-core-libs)
 aq_require(acquire-driver-common)
 aq_require(acquire-video-runtime)
 

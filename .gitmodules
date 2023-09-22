@@ -4,3 +4,6 @@
 [submodule "src/acquire-video-runtime"]
 	path = src/acquire-video-runtime
 	url = ../acquire-video-runtime.git
+[submodule "acquire-core-libs"]
+	path = src/acquire-core-libs
+	url = git@github.com:aliddell/acquire-core-libs.git
