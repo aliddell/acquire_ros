@@ -1,7 +1,8 @@
 set(NOTEST TRUE)
 aq_require(acquire-core-libs)
-aq_require(acquire-driver-common)
 aq_require(acquire-video-runtime)
+aq_require(acquire-driver-common)
+aq_require(acquire-driver-spinnaker)
 set(NOTEST FALSE)
 
 add_executable(streamer streamer.cpp)

@@ -6,4 +6,7 @@
 	url = ../acquire-video-runtime.git
 [submodule "acquire-core-libs"]
 	path = src/acquire-core-libs
-	url = git@github.com:aliddell/acquire-core-libs.git
+	url = ../acquire-core-libs.git
+[submodule "src/acquire-driver-spinnaker"]
+	path = src/acquire-driver-spinnaker
+	url = ../acquire-driver-spinnaker.git
