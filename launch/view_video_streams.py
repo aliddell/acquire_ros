@@ -9,12 +9,12 @@ from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubs
 def generate_launch_description():
     camera0_launch_arg = DeclareLaunchArgument(
         "camera0",
-        default_value=TextSubstitution(text=".*simulated: uniform random.*"),
+        default_value=TextSubstitution(text=".*simulated.*uniform random.*"),
         description="Camera descriptor for the first stream.",
     )
     camera1_launch_arg = DeclareLaunchArgument(
         "camera1",
-        default_value=TextSubstitution(text=".*simulated: radial sin.*"),
+        default_value=TextSubstitution(text=".*simulated.*radial sin.*"),
         description="Camera descriptor for the second stream.",
     )
 
