@@ -99,13 +99,18 @@ void reporter(int is_error, const char* file, int line, const char* function, co
 
 #define SIZED(str) str, sizeof(str)
 
-class AcquireStreamer : public rclcpp::Node
+class AcquireStreamer final : public rclcpp::Node
 {
 public:
   AcquireStreamer() : Node("streamer"), runtime_{ nullptr }, props_{ 0 }, nframes_{ 0 }
   {
-    this->declare_parameter("camera0", ".*simulated: uniform random.*");
-    this->declare_parameter("camera1", ".*simulated: radial sin.*");
+    rcl_interfaces::msg::ParameterDescriptor camera0_desc{};
+    camera0_desc.description = "Camera 0 type.";
+    this->declare_parameter("camera0", ".*simulated: uniform random.*", camera0_desc);
+
+    rcl_interfaces::msg::ParameterDescriptor camera1_desc{};
+    camera1_desc.description = "Camera 1 type.";
+    this->declare_parameter("camera1", ".*simulated: radial sin.*", camera1_desc);
 
     rclcpp::QoS qos(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
     publishers_.at(0) = this->create_publisher<sensor_msgs::msg::Image>("stream0", qos);
