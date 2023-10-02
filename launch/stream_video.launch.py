@@ -2,9 +2,8 @@ from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
-from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PythonExpression, TextSubstitution
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration, TextSubstitution
 
 
 def generate_launch_description():
@@ -19,6 +18,12 @@ def generate_launch_description():
         description="Camera descriptor for the second stream.",
     )
 
+    namespace_arg = DeclareLaunchArgument(
+        "namespace",
+        default_value=TextSubstitution(text="acquire"),
+        description="Namespace for the nodes.",
+    )
+
     log_level_arg = DeclareLaunchArgument(
         "log_level",
         default_value=TextSubstitution(text=str("WARN")),
@@ -27,7 +32,7 @@ def generate_launch_description():
 
     streamer_node = Node(
         package="acquire",
-        namespace="acquire",
+        namespace=LaunchConfiguration("namespace"),
         executable="streamer",
         name="streamer",
         parameters=[
@@ -38,20 +43,13 @@ def generate_launch_description():
         ],
         arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
     )
-    viewer_node = Node(
-        package="acquire",
-        namespace="acquire",
-        executable="viewer",
-        name="viewer",
-        arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
-    )
 
     return LaunchDescription(
         [
             camera0_launch_arg,
             camera1_launch_arg,
+            namespace_arg,
             log_level_arg,
             streamer_node,
-            viewer_node,
         ]
     )
