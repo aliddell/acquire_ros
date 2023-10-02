@@ -42,14 +42,15 @@ class AcquireViewer : public rclcpp::Node
 public:
   AcquireViewer() : Node("viewer")
   {
+    rcl_interfaces::msg::ParameterDescriptor keep_last_desc{};
+    keep_last_desc.description = "Number of frames to keep.";
+    this->declare_parameter("keep_last", -1, keep_last_desc);
+
     window_names_ = { "stream 0", "stream 1" };
-    rclcpp::QoS qos(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
     cv::namedWindow(window_names_.at(0), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
     cv::namedWindow(window_names_.at(1), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
-    subscriptions_.at(0) = this->create_subscription<sensor_msgs::msg::Image>(
-        "stream0", qos, std::bind(&AcquireViewer::stream0, this, std::placeholders::_1));
-    subscriptions_.at(1) = this->create_subscription<sensor_msgs::msg::Image>(
-        "stream1", qos, std::bind(&AcquireViewer::stream1, this, std::placeholders::_1));
+
+    configure_subscribers_();
   }
 
 private:
@@ -73,6 +74,25 @@ private:
   {
     topic_callback(1, msg);
   }
+
+   void configure_subscribers_()
+   {
+    auto keep_last = this->get_parameter("keep_last").as_int();
+
+    std::shared_ptr<rclcpp::QoS> qos;
+    if (keep_last >= 0) {
+      keep_last = std::max((int64_t)1, keep_last);
+      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepLast(keep_last), rmw_qos_profile_sensor_data);
+    } else {
+      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
+    }
+
+    DEBUG("keep_last: %d", keep_last);
+    subscriptions_.at(0) = this->create_subscription<sensor_msgs::msg::Image>(
+        "stream0", *qos, std::bind(&AcquireViewer::stream0, this, std::placeholders::_1));
+    subscriptions_.at(1) = this->create_subscription<sensor_msgs::msg::Image>(
+        "stream1", *qos, std::bind(&AcquireViewer::stream1, this, std::placeholders::_1));
+   } 
 };
 
 int main(int argc, char** argv)

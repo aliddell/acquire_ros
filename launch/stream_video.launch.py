@@ -7,17 +7,6 @@ from launch.substitutions import LaunchConfiguration, TextSubstitution
 
 
 def generate_launch_description():
-    camera0_launch_arg = DeclareLaunchArgument(
-        "camera0",
-        default_value=TextSubstitution(text=".*simulated.*uniform random.*"),
-        description="Camera descriptor for the first stream.",
-    )
-    camera1_launch_arg = DeclareLaunchArgument(
-        "camera1",
-        default_value=TextSubstitution(text=".*simulated.*radial sin.*"),
-        description="Camera descriptor for the second stream.",
-    )
-
     namespace_arg = DeclareLaunchArgument(
         "namespace",
         default_value=TextSubstitution(text="acquire"),
@@ -28,6 +17,24 @@ def generate_launch_description():
         "log_level",
         default_value=TextSubstitution(text=str("WARN")),
         description="Logging level",
+    )
+
+    camera0_arg = DeclareLaunchArgument(
+        "camera0",
+        default_value=TextSubstitution(text=".*simulated.*uniform random.*"),
+        description="Camera descriptor for the first stream.",
+    )
+
+    camera1_arg = DeclareLaunchArgument(
+        "camera1",
+        default_value=TextSubstitution(text=".*simulated.*radial sin.*"),
+        description="Camera descriptor for the second stream.",
+    )
+
+    keep_last_arg = DeclareLaunchArgument(
+        "keep_last",
+        default_value=TextSubstitution(text="-1"),
+        description="Number of images to keep in the buffer.",
     )
 
     streamer_node = Node(
@@ -46,10 +53,11 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            camera0_launch_arg,
-            camera1_launch_arg,
             namespace_arg,
             log_level_arg,
+            camera0_arg,
+            camera1_arg,
+            keep_last_arg,
             streamer_node,
         ]
     )

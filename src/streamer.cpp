@@ -104,6 +104,10 @@ class AcquireStreamer final : public rclcpp::Node
 public:
   AcquireStreamer() : Node("streamer"), runtime_{ nullptr }, props_{ 0 }, nframes_{ 0 }
   {
+    rcl_interfaces::msg::ParameterDescriptor keep_last_desc{};
+    keep_last_desc.description = "Number of frames to keep.";
+    this->declare_parameter("keep_last", -1, keep_last_desc);
+
     rcl_interfaces::msg::ParameterDescriptor camera0_desc{};
     camera0_desc.description = "Camera 0 type.";
     this->declare_parameter("camera0", ".*simulated: uniform random.*", camera0_desc);
@@ -112,9 +116,7 @@ public:
     camera1_desc.description = "Camera 1 type.";
     this->declare_parameter("camera1", ".*simulated: radial sin.*", camera1_desc);
 
-    rclcpp::QoS qos(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
-    publishers_.at(0) = this->create_publisher<sensor_msgs::msg::Image>("stream0", qos);
-    publishers_.at(1) = this->create_publisher<sensor_msgs::msg::Image>("stream1", qos);
+    this->configure_publishers_();
     timer_ = this->create_wall_timer(10ms, std::bind(&AcquireStreamer::timer_callback, this));
     configure_streams();
     acquire_start(runtime_);
@@ -213,7 +215,23 @@ private:
     send_data(0);
     send_data(1);
   }
-    
+
+   void configure_publishers_()
+   {
+    auto keep_last = this->get_parameter("keep_last").as_int();
+
+    std::shared_ptr<rclcpp::QoS> qos;
+    if (keep_last >= 0) {
+      keep_last = std::max((int64_t)1, keep_last);
+      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepLast(keep_last), rmw_qos_profile_sensor_data);
+    } else {
+      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
+    }
+
+    DEBUG("keep_last: %d", keep_last);
+    publishers_.at(0) = this->create_publisher<sensor_msgs::msg::Image>("stream0", *qos);
+    publishers_.at(1) = this->create_publisher<sensor_msgs::msg::Image>("stream1", *qos);
+   } 
 };
 
 int main(int argc, char** argv)

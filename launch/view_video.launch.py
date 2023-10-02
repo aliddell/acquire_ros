@@ -1,4 +1,5 @@
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -18,11 +19,22 @@ def generate_launch_description():
         description="Logging level",
     )
 
+    keep_last_arg = DeclareLaunchArgument(
+        "keep_last",
+        default_value=TextSubstitution(text="-1"),
+        description="Number of images to keep in the buffer.",
+    )
+
     viewer_node = Node(
         package="acquire",
         namespace=LaunchConfiguration("namespace"),
         executable="viewer",
         name="viewer",
+        parameters=[
+            {
+                "keep_last": ParameterValue(LaunchConfiguration("keep_last")),
+            }
+        ],
         arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
     )
 
@@ -30,6 +42,7 @@ def generate_launch_description():
         [
             namespace_arg,
             log_level_arg,
+            keep_last_arg,
             viewer_node,
         ]
     )
