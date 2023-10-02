@@ -1,4 +1,5 @@
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
@@ -31,8 +32,8 @@ def generate_launch_description():
         name="streamer",
         parameters=[
             {
-                "camera0": LaunchConfiguration("camera0"),
-                "camera1": LaunchConfiguration("camera1"),
+                "camera0": ParameterValue(LaunchConfiguration("camera0")),
+                "camera1": ParameterValue(LaunchConfiguration("camera1")),
             }
         ],
         arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
