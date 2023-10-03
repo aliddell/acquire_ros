@@ -46,7 +46,8 @@ public:
     keep_last_desc.description = "Number of frames to keep.";
     this->declare_parameter("keep_last", -1, keep_last_desc);
 
-    window_names_ = { "stream 0", "stream 1" };
+    window_names_ = { std::string(this->get_namespace()) + ": stream 0",
+                      std::string(this->get_namespace()) + ": stream 1" };
     cv::namedWindow(window_names_.at(0), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
     cv::namedWindow(window_names_.at(1), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
 
