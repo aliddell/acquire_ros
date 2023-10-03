@@ -88,7 +88,6 @@ private:
       qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
     }
 
-    DEBUG("keep_last: %d", keep_last);
     subscriptions_.at(0) = this->create_subscription<sensor_msgs::msg::Image>(
         "stream0", *qos, std::bind(&AcquireViewer::stream0, this, std::placeholders::_1));
     subscriptions_.at(1) = this->create_subscription<sensor_msgs::msg::Image>(
