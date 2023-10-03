@@ -228,7 +228,6 @@ private:
       qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
     }
 
-    DEBUG("keep_last: %d", keep_last);
     publishers_.at(0) = this->create_publisher<sensor_msgs::msg::Image>("stream0", *qos);
     publishers_.at(1) = this->create_publisher<sensor_msgs::msg::Image>("stream1", *qos);
    } 

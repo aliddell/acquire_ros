@@ -12,22 +12,10 @@ from launch.substitutions import (
 
 
 def generate_launch_description():
-    n_processes_arg = DeclareLaunchArgument(
-        "n_processes",
-        default_value=TextSubstitution(text="2"),
-        description="Number of Acquire processes to launch.",
-    )
-
     keep_last_arg = DeclareLaunchArgument(
         "keep_last",
         default_value=TextSubstitution(text="-1"),
         description="Number of images to keep in the buffer.",
-    )
-
-    namespace_arg = DeclareLaunchArgument(
-        "namespace",
-        default_value=TextSubstitution(text="acquire"),
-        description="Namespace for the nodes.",
     )
 
     log_level_arg = DeclareLaunchArgument(
@@ -36,35 +24,38 @@ def generate_launch_description():
         description="Logging level",
     )
 
-    camera0_arg = DeclareLaunchArgument(
-        "camera0",
+    camera00_arg = DeclareLaunchArgument(
+        "camera00",
         default_value=TextSubstitution(text=".*simulated.*uniform random.*"),
-        description="Camera descriptor for the first stream.",
+        description="Camera descriptor for the first process, first stream.",
     )
 
-    camera1_arg = DeclareLaunchArgument(
-        "camera1",
+    camera01_arg = DeclareLaunchArgument(
+        "camera01",
         default_value=TextSubstitution(text=".*simulated.*radial sin.*"),
-        description="Camera descriptor for the second stream.",
+        description="Camera descriptor for the first process, second stream.",
     )
 
-    args = [
-        n_processes_arg,
-        namespace_arg,
-        log_level_arg,
-        keep_last_arg,
-        camera0_arg,
-        camera1_arg,
-    ]
+    camera10_arg = DeclareLaunchArgument(
+        "camera10",
+        default_value=TextSubstitution(text=".*bfly.*"),
+        description="Camera descriptor for the second process, first stream.",
+    )
+
+    camera11_arg = DeclareLaunchArgument(
+        "camera11",
+        default_value=TextSubstitution(text=".*simulated.*radial sin.*"),
+        description="Camera descriptor for the second process, second stream.",
+    )
 
     return LaunchDescription(
         [
-            n_processes_arg,
-            namespace_arg,
             log_level_arg,
             keep_last_arg,
-            camera0_arg,
-            camera1_arg,
+            camera00_arg,
+            camera01_arg,
+            camera10_arg,
+            camera11_arg,
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     [
@@ -78,11 +69,31 @@ def generate_launch_description():
                     ]
                 ),
                 launch_arguments={
-                    "namespace": LaunchConfiguration("namespace"),
+                    "namespace": "acquire/first",
                     "log_level": LaunchConfiguration("log_level"),
                     "keep_last": LaunchConfiguration("keep_last"),
-                    "camera0": LaunchConfiguration("camera0"),
-                    "camera1": LaunchConfiguration("camera1"),
+                    "camera0": LaunchConfiguration("camera00"),
+                    "camera1": LaunchConfiguration("camera01"),
+                }.items(),
+            ),
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    [
+                        PathJoinSubstitution(
+                            [
+                                FindPackageShare("acquire"),
+                                "launch",
+                                "stream_and_view_video.launch.py",
+                            ]
+                        ),
+                    ]
+                ),
+                launch_arguments={
+                    "namespace": "acquire/second",
+                    "log_level": LaunchConfiguration("log_level"),
+                    "keep_last": LaunchConfiguration("keep_last"),
+                    "camera0": LaunchConfiguration("camera10"),
+                    "camera1": LaunchConfiguration("camera11"),
                 }.items(),
             ),
         ]
