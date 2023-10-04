@@ -32,7 +32,7 @@ def generate_launch_description():
 
     camera01_arg = DeclareLaunchArgument(
         "camera01",
-        default_value=TextSubstitution(text=".*simulated.*random.*"),
+        default_value=TextSubstitution(text=".*simulated.*radial.*"),
         description="Camera descriptor for the first process, second stream.",
     )
 
@@ -44,7 +44,7 @@ def generate_launch_description():
 
     camera11_arg = DeclareLaunchArgument(
         "camera11",
-        default_value=TextSubstitution(text=".*simulated.*random.*"),
+        default_value=TextSubstitution(text=".*simulated.*radial.*"),
         description="Camera descriptor for the second process, second stream.",
     )
 
