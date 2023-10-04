@@ -40,3 +40,16 @@ target_compile_features(viewer PUBLIC c_std_11 cxx_std_17)  # Require C11 and C+
 
 install(TARGETS viewer
   DESTINATION lib/${PROJECT_NAME})
+
+foreach(driver
+        acquire-core-logger
+        acquire-core-platform
+        acquire-device-hal
+        acquire-device-properties
+        acquire-video-runtime
+        acquire-driver-common
+        acquire-driver-spinnaker
+)
+  INSTALL(FILES $<TARGET_FILE:${driver}>
+    DESTINATION lib/${PROJECT_NAME})
+endforeach()
