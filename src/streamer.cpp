@@ -17,6 +17,8 @@
 
 using namespace std::chrono_literals;
 
+static std::string namespace_ = "acquire";
+
 namespace
 {
 size_t consumed_bytes(const VideoFrame* const cur, const VideoFrame* const end)
@@ -31,7 +33,7 @@ VideoFrame* next(VideoFrame* const cur)
 
 void reporter(int is_error, const char* file, int line, const char* function, const char* msg)
 {
-  auto logger = rclcpp::get_logger("acquire_inner");
+  auto logger = rclcpp::get_logger(namespace_ + ": inner");
   if (is_error)
   {
     RCLCPP_ERROR(logger, "%s(%d) - %s: %s\n", file, line, function, msg);
@@ -104,6 +106,8 @@ class AcquireStreamer final : public rclcpp::Node
 public:
   AcquireStreamer() : Node("streamer"), runtime_{ nullptr }, props_{ 0 }, nframes_{ 0 }
   {
+    namespace_ = this->get_namespace();
+
     rcl_interfaces::msg::ParameterDescriptor keep_last_desc{};
     keep_last_desc.description = "Number of frames to keep.";
     this->declare_parameter("keep_last", -1, keep_last_desc);
