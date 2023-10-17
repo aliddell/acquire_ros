@@ -111,22 +111,27 @@ class AcquireStreamer final : public rclcpp::Node {
     this->declare_parameter("camera1", "", descriptor);
 
     for (auto i = 0; i < 2; ++i) {
-      descriptor.description = "Camera 0 binning.";
-      this->declare_parameter("camera0_binning", 1, descriptor);
+      descriptor.description = "Camera " + std::to_string(i) + " binning.";
+      this->declare_parameter("camera" + std::to_string(i) + "_binning", 1,
+                              descriptor);
 
-      descriptor.description = "Camera 0 exposure time in microseconds.";
-      this->declare_parameter("camera0_exposure_time_us", 1e4, descriptor);
+      descriptor.description =
+          "Camera " + std::to_string(i) + " exposure time in microseconds.";
+      this->declare_parameter(
+          "camera" + std::to_string(i) + "_exposure_time_us", 1e4, descriptor);
 
-      descriptor.description = "Camera 0 image width.";
-      this->declare_parameter("camera0_width", 640, descriptor);
+      descriptor.description = "Camera " + std::to_string(i) + " image width.";
+      this->declare_parameter("camera" + std::to_string(i) + "_width", 640,
+                              descriptor);
 
-      descriptor.description = "Camera 0 image height.";
-      this->declare_parameter("camera0_height", 480, descriptor);
+      descriptor.description = "Camera " + std::to_string(i) + " image height.";
+      this->declare_parameter("camera" + std::to_string(i) + "_height", 480,
+                              descriptor);
     }
 
     configure_publishers_();
     timer_ = this->create_wall_timer(
-        10ms, std::bind(&AcquireStreamer::timer_callback, this));
+        5ms, std::bind(&AcquireStreamer::timer_callback, this));
 
     configure_streams();
     acquire_start(runtime_);
