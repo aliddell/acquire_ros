@@ -45,39 +45,30 @@ public:
     rcl_interfaces::msg::ParameterDescriptor keep_last_desc{};
     keep_last_desc.description = "Number of frames to keep.";
     this->declare_parameter("keep_last", -1, keep_last_desc);
+    
+    rcl_interfaces::msg::ParameterDescriptor topic_desc{};
+    this->declare_parameter("topic", "stream0", topic_desc);
 
-    window_names_ = { std::string(this->get_namespace()) + ": stream 0",
-                      std::string(this->get_namespace()) + ": stream 1" };
-    cv::namedWindow(window_names_.at(0), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
-    cv::namedWindow(window_names_.at(1), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
+    stream_topic_ = this->get_parameter("topic").as_string();
+    cv::namedWindow(window_name(), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO | cv::WINDOW_GUI_EXPANDED);
 
-    configure_subscribers_();
+    configure_subscriber_();
   }
 
 private:
-  std::array<rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr, 2> subscriptions_;
-  std::array<std::string, 2> window_names_;
+  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
+  std::string stream_topic_;
 
-  void topic_callback(int stream, sensor_msgs::msg::Image::SharedPtr msg)
+  void display_image(sensor_msgs::msg::Image::SharedPtr msg)
   {
     DEBUG("Got an image: %u x %u, %lu bytes", msg->width, msg->height, msg->data.size());
     cv::Mat img(msg->height, msg->width, CV_8U, (void*)msg->data.data());
-    cv::imshow(window_names_.at(stream), img);
-    cv::waitKey(10);
+    cv::imshow(window_name(), img);
+    cv::waitKey(1);
   }
 
-  void stream0(sensor_msgs::msg::Image::SharedPtr msg)
+  void configure_subscriber_()
   {
-    topic_callback(0, msg);
-  }
-
-  void stream1(sensor_msgs::msg::Image::SharedPtr msg)
-  {
-    topic_callback(1, msg);
-  }
-
-   void configure_subscribers_()
-   {
     auto keep_last = this->get_parameter("keep_last").as_int();
 
     std::shared_ptr<rclcpp::QoS> qos;
@@ -88,11 +79,14 @@ private:
       qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
     }
 
-    subscriptions_.at(0) = this->create_subscription<sensor_msgs::msg::Image>(
-        "stream0", *qos, std::bind(&AcquireViewer::stream0, this, std::placeholders::_1));
-    subscriptions_.at(1) = this->create_subscription<sensor_msgs::msg::Image>(
-        "stream1", *qos, std::bind(&AcquireViewer::stream1, this, std::placeholders::_1));
-   } 
+    subscription_ = this->create_subscription<sensor_msgs::msg::Image>(
+        stream_topic_, *qos, std::bind(&AcquireViewer::display_image, this, std::placeholders::_1));
+  }
+
+  std::string window_name() const
+  {
+    return std::string(get_namespace()) + ": " + stream_topic_;
+  }
 };
 
 int main(int argc, char** argv)
