@@ -1,16 +1,16 @@
 #include <array>
-#include <cstdio>
-#include <cstdint>
 #include <chrono>
+#include <cstdint>
+#include <cstdio>
 #include <functional>
 #include <stdexcept>
 
-#include "rclcpp/rclcpp.hpp"
 #include "rclcpp/qos.hpp"
-#include "std_msgs/msg/string.hpp"
-#include "sensor_msgs/msg/image.hpp"
-#include "sensor_msgs/image_encodings.hpp"
+#include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/fill_image.hpp"
+#include "sensor_msgs/image_encodings.hpp"
+#include "sensor_msgs/msg/image.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "acquire.h"
 #include "device/hal/device.manager.h"
@@ -19,71 +19,64 @@ using namespace std::chrono_literals;
 
 static std::string namespace_ = "acquire";
 
-namespace
-{
-size_t consumed_bytes(const VideoFrame* const cur, const VideoFrame* const end)
-{
-  return (uint8_t*)end - (uint8_t*)cur;
+namespace {
+size_t consumed_bytes(const VideoFrame *const cur,
+                      const VideoFrame *const end) {
+  return (uint8_t *)end - (uint8_t *)cur;
 };
 
-VideoFrame* next(VideoFrame* const cur)
-{
-  return (VideoFrame*)(((uint8_t*)cur) + cur->bytes_of_frame);
+VideoFrame *next(VideoFrame *const cur) {
+  return (VideoFrame *)(((uint8_t *)cur) + cur->bytes_of_frame);
 }
 
-void reporter(int is_error, const char* file, int line, const char* function, const char* msg)
-{
+void reporter(int is_error, const char *file, int line, const char *function,
+              const char *msg) {
   auto logger = rclcpp::get_logger(namespace_ + ": inner");
-  if (is_error)
-  {
+  if (is_error) {
     RCLCPP_ERROR(logger, "%s(%d) - %s: %s\n", file, line, function, msg);
-  }
-  else
-  {
+  } else {
     RCLCPP_DEBUG(logger, "%s(%d) - %s: %s\n", file, line, function, msg);
   }
 }
 }  // namespace
 
-#define DEBUG(...)                                                                                                     \
-  do                                                                                                                   \
-  {                                                                                                                    \
-    char args[1 << 8] = { 0 };                                                                                         \
-    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
-    RCLCPP_DEBUG(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                            \
+#define DEBUG(...)                                                     \
+  do {                                                                 \
+    char args[1 << 8] = {0};                                           \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                     \
+    RCLCPP_DEBUG(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, \
+                 __FUNCTION__, args);                                  \
   } while (0)
-#define LOG(...)                                                                                                       \
-  do                                                                                                                   \
-  {                                                                                                                    \
-    char args[1 << 8] = { 0 };                                                                                         \
-    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
-    RCLCPP_INFO(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                             \
+#define LOG(...)                                                      \
+  do {                                                                \
+    char args[1 << 8] = {0};                                          \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                    \
+    RCLCPP_INFO(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, \
+                __FUNCTION__, args);                                  \
   } while (0)
-#define WARN(...)                                                                                                      \
-  do                                                                                                                   \
-  {                                                                                                                    \
-    char args[1 << 8] = { 0 };                                                                                         \
-    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
-    RCLCPP_WARN(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                             \
+#define WARN(...)                                                     \
+  do {                                                                \
+    char args[1 << 8] = {0};                                          \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                    \
+    RCLCPP_WARN(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, \
+                __FUNCTION__, args);                                  \
   } while (0)
-#define ERR(...)                                                                                                       \
-  do                                                                                                                   \
-  {                                                                                                                    \
-    char args[1 << 8] = { 0 };                                                                                         \
-    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                                                                     \
-    RCLCPP_ERROR(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, __FUNCTION__, args);                            \
+#define ERR(...)                                                       \
+  do {                                                                 \
+    char args[1 << 8] = {0};                                           \
+    snprintf(args, sizeof(args) - 1, __VA_ARGS__);                     \
+    RCLCPP_ERROR(get_logger(), "%s (%d) - %s: %s", __FILE__, __LINE__, \
+                 __FUNCTION__, args);                                  \
   } while (0)
 
-#define EXPECT(e, ...)                                                                                                 \
-  do                                                                                                                   \
-  {                                                                                                                    \
-    if (!(e))                                                                                                          \
-    {                                                                                                                  \
-      char buf[1 << 8] = { 0 };                                                                                        \
-      ERR(__VA_ARGS__);                                                                                                \
-      snprintf(buf, sizeof(buf) - 1, __VA_ARGS__);                                                                     \
-      throw std::runtime_error(buf);                                                                                   \
-    }                                                                                                                  \
+#define EXPECT(e, ...)                             \
+  do {                                             \
+    if (!(e)) {                                    \
+      char buf[1 << 8] = {0};                      \
+      ERR(__VA_ARGS__);                            \
+      snprintf(buf, sizeof(buf) - 1, __VA_ARGS__); \
+      throw std::runtime_error(buf);               \
+    }                                              \
   } while (0)
 #define CHECK(e) EXPECT(e, "Expression evaluated as false: %s", #e)
 #define OK(e) CHECK(AcquireStatus_Ok == (e))
@@ -91,78 +84,100 @@ void reporter(int is_error, const char* file, int line, const char* function, co
 
 /// Check that a==b
 /// example: `ASSERT_EQ(int,"%d",42,meaning_of_life())`
-#define ASSERT_EQ(T, fmt, a, b)                                                                                        \
-  do                                                                                                                   \
-  {                                                                                                                    \
-    T a_ = (T)(a);                                                                                                     \
-    T b_ = (T)(b);                                                                                                     \
-    EXPECT(a_ == b_, "Expected %s == %s but " fmt " != " fmt, #a, #b, a_, b_);                                         \
+#define ASSERT_EQ(T, fmt, a, b)                                                \
+  do {                                                                         \
+    T a_ = (T)(a);                                                             \
+    T b_ = (T)(b);                                                             \
+    EXPECT(a_ == b_, "Expected %s == %s but " fmt " != " fmt, #a, #b, a_, b_); \
   } while (0)
 
 #define SIZED(str) str, sizeof(str)
 
-class AcquireStreamer final : public rclcpp::Node
-{
-public:
-  AcquireStreamer() : Node("streamer"), runtime_{ nullptr }, props_{ 0 }, nframes_{ 0 }
-  {
+class AcquireStreamer final : public rclcpp::Node {
+ public:
+  AcquireStreamer()
+      : Node("streamer"), runtime_{nullptr}, props_{0}, nframes_{0} {
     namespace_ = this->get_namespace();
 
-    rcl_interfaces::msg::ParameterDescriptor keep_last_desc{};
-    keep_last_desc.description = "Number of frames to keep.";
-    this->declare_parameter("keep_last", -1, keep_last_desc);
+    rcl_interfaces::msg::ParameterDescriptor descriptor{};
+    descriptor.description = "Number of frames to keep.";
+    this->declare_parameter("keep_last", -1, descriptor);
 
-    rcl_interfaces::msg::ParameterDescriptor camera0_desc{};
-    camera0_desc.description = "Camera 0 type.";
-    this->declare_parameter("camera0", ".*simulated: uniform random.*", camera0_desc);
+    descriptor.description = "Camera 0 identifier.";
+    this->declare_parameter("camera0", ".*simulated: uniform random.*",
+                            descriptor);
 
-    rcl_interfaces::msg::ParameterDescriptor camera1_desc{};
-    camera1_desc.description = "Camera 1 type.";
-    this->declare_parameter("camera1", ".*simulated: radial sin.*", camera1_desc);
+    descriptor.description = "Camera 1 identifier.";
+    this->declare_parameter("camera1", "", descriptor);
 
-    this->configure_publishers_();
-    timer_ = this->create_wall_timer(10ms, std::bind(&AcquireStreamer::timer_callback, this));
+    for (auto i = 0; i < 2; ++i) {
+      descriptor.description = "Camera 0 binning.";
+      this->declare_parameter("camera0_binning", 1, descriptor);
+
+      descriptor.description = "Camera 0 exposure time in microseconds.";
+      this->declare_parameter("camera0_exposure_time_us", 1e4, descriptor);
+
+      descriptor.description = "Camera 0 image width.";
+      this->declare_parameter("camera0_width", 640, descriptor);
+
+      descriptor.description = "Camera 0 image height.";
+      this->declare_parameter("camera0_height", 480, descriptor);
+    }
+
+    configure_publishers_();
+    timer_ = this->create_wall_timer(
+        10ms, std::bind(&AcquireStreamer::timer_callback, this));
+
     configure_streams();
     acquire_start(runtime_);
   }
 
-  ~AcquireStreamer()
-  {
+  ~AcquireStreamer() {
     DEBUG("Destructor called.");
-    if (runtime_)
-    {
+    if (runtime_) {
       acquire_abort(runtime_);
       acquire_shutdown(runtime_);
     }
   }
 
-private:
-  AcquireRuntime* runtime_;
+ private:
+  AcquireRuntime *runtime_;
   AcquireProperties props_;
 
   rclcpp::TimerBase::SharedPtr timer_;
-  std::array<rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr, 2> publishers_;
+  std::array<rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr, 2>
+      publishers_;
 
   uint64_t nframes_;
 
   void configure_stream(uint8_t stream) {
+    const std::string camera = "camera" + std::to_string(stream);
+    const std::string camera_name = this->get_parameter(camera).as_string();
+    if (camera_name
+            .empty()) {  // don't configure a stream if no camera is specified
+      return;
+    }
+
     auto dm = acquire_device_manager(runtime_);
     CHECK(dm);
 
-    AcquirePropertyMetadata meta = { 0 };
+    AcquirePropertyMetadata meta = {0};
     OK(acquire_get_configuration_metadata(runtime_, &meta));
 
     // camera configuration
-    const std::string param = "camera" + std::to_string(stream);
-    const std::string camera = this->get_parameter(param).as_string();
-    DEVOK(device_manager_select(dm, DeviceKind_Camera, camera.c_str(), camera.size(),
+    DEVOK(device_manager_select(dm, DeviceKind_Camera, camera_name.c_str(),
+                                camera_name.size(),
                                 &props_.video[stream].camera.identifier));
-                                
-    props_.video[stream].camera.settings.binning = 1;
+
+    props_.video[stream].camera.settings.binning =
+        this->get_parameter(camera + "_binning").as_int();
     props_.video[stream].camera.settings.pixel_type = SampleType_u8;
-    props_.video[stream].camera.settings.shape.x = 640;
-    props_.video[stream].camera.settings.shape.y = 480;
-    props_.video[stream].camera.settings.exposure_time_us = 1e4;
+    props_.video[stream].camera.settings.shape.x =
+        this->get_parameter(camera + "_width").as_int();
+    props_.video[stream].camera.settings.shape.y =
+        this->get_parameter(camera + "_height").as_int();
+    props_.video[stream].camera.settings.exposure_time_us =
+        this->get_parameter(camera + "_exposure_time_us").as_double();
     props_.video[stream].max_frame_count = UINT64_MAX;
 
     // storage configuration
@@ -170,8 +185,7 @@ private:
                                 &props_.video[stream].storage.identifier));
   }
 
-  void configure_streams()
-  {
+  void configure_streams() {
     CHECK(runtime_ = acquire_init(reporter));
 
     OK(acquire_get_configuration(runtime_, &props_));
@@ -187,16 +201,19 @@ private:
   void send_data(uint8_t stream) {
     VideoFrame *beg, *end, *cur;
     OK(acquire_map_read(runtime_, stream, &beg, &end));
-    DEBUG("stream %d got %zu frames", stream, (size_t)((uint8_t*)end - (uint8_t*)beg));
-    for (cur = beg; cur < end; cur = next(cur))
-    {
+    DEBUG("stream %d got %zu frames", stream,
+          (size_t)((uint8_t *)end - (uint8_t *)beg));
+    for (cur = beg; cur < end; cur = next(cur)) {
       DEBUG("stream %d counting frame w id %lu", stream, cur->frame_id);
-      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.width, props_.video[stream].camera.settings.shape.x);
-      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.height, props_.video[stream].camera.settings.shape.y);
+      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.width,
+                props_.video[stream].camera.settings.shape.x);
+      ASSERT_EQ(uint32_t, "%u", cur->shape.dims.height,
+                props_.video[stream].camera.settings.shape.y);
 
       sensor_msgs::msg::Image msg;
-      CHECK(sensor_msgs::fillImage(msg, sensor_msgs::image_encodings::MONO8, cur->shape.dims.height,
-                                   cur->shape.dims.width, cur->shape.strides.height, cur->data));
+      CHECK(sensor_msgs::fillImage(
+          msg, sensor_msgs::image_encodings::MONO8, cur->shape.dims.height,
+          cur->shape.dims.width, cur->shape.strides.height, cur->data));
 
       DEBUG("Publishing: '%lu'", cur->frame_id);
       publishers_.at(stream)->publish(msg);
@@ -205,14 +222,11 @@ private:
 
     auto n = (uint32_t)consumed_bytes(beg, end);
     OK(acquire_unmap_read(runtime_, stream, n));
-    if (n)
-      DEBUG("stream %d consumed bytes %d", stream, n);
+    if (n) DEBUG("stream %d consumed bytes %d", stream, n);
   }
 
-  void timer_callback()
-  {
-    if (DeviceState_Running != acquire_get_state(runtime_))
-    {
+  void timer_callback() {
+    if (DeviceState_Running != acquire_get_state(runtime_)) {
       return;
     }
 
@@ -220,25 +234,27 @@ private:
     send_data(1);
   }
 
-   void configure_publishers_()
-   {
+  void configure_publishers_() {
     auto keep_last = this->get_parameter("keep_last").as_int();
 
     std::shared_ptr<rclcpp::QoS> qos;
     if (keep_last >= 0) {
       keep_last = std::max((int64_t)1, keep_last);
-      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepLast(keep_last), rmw_qos_profile_sensor_data);
+      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepLast(keep_last),
+                                          rmw_qos_profile_sensor_data);
     } else {
-      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
+      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(),
+                                          rmw_qos_profile_sensor_data);
     }
 
-    publishers_.at(0) = this->create_publisher<sensor_msgs::msg::Image>("stream0", *qos);
-    publishers_.at(1) = this->create_publisher<sensor_msgs::msg::Image>("stream1", *qos);
-   } 
+    publishers_.at(0) =
+        this->create_publisher<sensor_msgs::msg::Image>("stream0", *qos);
+    publishers_.at(1) =
+        this->create_publisher<sensor_msgs::msg::Image>("stream1", *qos);
+  }
 };
 
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
   auto streamer = std::make_shared<AcquireStreamer>();
   rclcpp::spin(streamer);
