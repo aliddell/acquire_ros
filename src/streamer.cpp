@@ -111,22 +111,25 @@ class AcquireStreamer final : public rclcpp::Node {
     this->declare_parameter("camera1", "", descriptor);
 
     for (auto i = 0; i < 2; ++i) {
-      descriptor.description = "Camera " + std::to_string(i) + " binning.";
-      this->declare_parameter("camera" + std::to_string(i) + "_binning", 1,
+      const std::string camera_name = "camera" + std::to_string(i);
+      const std::string camera_desc = "Camera " + std::to_string(i);
+
+      descriptor.description = camera_desc + " topic.";
+      this->declare_parameter(camera_name + "_topic",
+                              "stream" + std::to_string(i), descriptor);
+
+      descriptor.description = camera_desc + " binning.";
+      this->declare_parameter(camera_name + "_binning", 1, descriptor);
+
+      descriptor.description = camera_desc + " exposure time in microseconds.";
+      this->declare_parameter(camera_name + "_exposure_time_us", 1e4,
                               descriptor);
 
-      descriptor.description =
-          "Camera " + std::to_string(i) + " exposure time in microseconds.";
-      this->declare_parameter(
-          "camera" + std::to_string(i) + "_exposure_time_us", 1e4, descriptor);
+      descriptor.description = camera_desc + " image width.";
+      this->declare_parameter(camera_name + "_width", 640, descriptor);
 
-      descriptor.description = "Camera " + std::to_string(i) + " image width.";
-      this->declare_parameter("camera" + std::to_string(i) + "_width", 640,
-                              descriptor);
-
-      descriptor.description = "Camera " + std::to_string(i) + " image height.";
-      this->declare_parameter("camera" + std::to_string(i) + "_height", 480,
-                              descriptor);
+      descriptor.description = camera_desc + " image height.";
+      this->declare_parameter(camera_name + "_height", 480, descriptor);
     }
 
     configure_publishers_();

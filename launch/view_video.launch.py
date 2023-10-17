@@ -25,6 +25,12 @@ def generate_launch_description():
         description="Number of images to keep in the buffer.",
     )
 
+    topic_arg = DeclareLaunchArgument(
+        "topic",
+        default_value=TextSubstitution(text="stream0"),
+        description="Topic to subscribe to.",
+    )
+
     viewer_node = Node(
         package="acquire",
         namespace=LaunchConfiguration("namespace"),
@@ -33,6 +39,7 @@ def generate_launch_description():
         parameters=[
             {
                 "keep_last": ParameterValue(LaunchConfiguration("keep_last")),
+                "topic": ParameterValue(LaunchConfiguration("topic")),
             }
         ],
         arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
@@ -43,6 +50,7 @@ def generate_launch_description():
             namespace_arg,
             log_level_arg,
             keep_last_arg,
+            topic_arg,
             viewer_node,
         ]
     )

@@ -40,12 +40,12 @@
 class AcquireViewer : public rclcpp::Node {
  public:
   AcquireViewer() : Node("viewer") {
-    rcl_interfaces::msg::ParameterDescriptor keep_last_desc{};
-    keep_last_desc.description = "Number of frames to keep.";
-    this->declare_parameter("keep_last", -1, keep_last_desc);
+    rcl_interfaces::msg::ParameterDescriptor descriptor{};
+    descriptor.description = "Number of frames to keep.";
+    this->declare_parameter("keep_last", -1, descriptor);
 
-    rcl_interfaces::msg::ParameterDescriptor topic_desc{};
-    this->declare_parameter("topic", "stream0", topic_desc);
+    descriptor.description = "Topic to subscribe to.";
+    this->declare_parameter("topic", "stream0", descriptor);
 
     stream_topic_ = this->get_parameter("topic").as_string();
     cv::namedWindow(window_name(), cv::WINDOW_AUTOSIZE | cv::WINDOW_KEEPRATIO |
