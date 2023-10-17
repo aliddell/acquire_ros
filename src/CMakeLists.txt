@@ -26,6 +26,22 @@ target_link_libraries(streamer
 install(TARGETS streamer
   DESTINATION lib/${PROJECT_NAME})
 
+
+add_executable(transformer transformer.cpp)
+ament_target_dependencies(transformer
+                          rclcpp
+                          std_msgs
+                          sensor_msgs
+                          OpenCV)
+target_include_directories(transformer PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+  $<INSTALL_INTERFACE:include>
+  ${OpenCV_INCLUDE_DIRS})
+target_compile_features(transformer PUBLIC c_std_11 cxx_std_17)  # Require C11 and C++20
+
+install(TARGETS transformer
+  DESTINATION lib/${PROJECT_NAME})
+
 add_executable(viewer viewer.cpp)
 ament_target_dependencies(viewer
                           rclcpp
