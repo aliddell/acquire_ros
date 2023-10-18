@@ -100,36 +100,31 @@ class AcquireStreamer final : public rclcpp::Node {
     namespace_ = this->get_namespace();
 
     rcl_interfaces::msg::ParameterDescriptor descriptor{};
-    descriptor.description = "Number of frames to keep.";
-    this->declare_parameter("keep_last", -1, descriptor);
-
     descriptor.description = "Camera 0 identifier.";
-    this->declare_parameter("camera0", ".*simulated: uniform random.*",
-                            descriptor);
+    this->declare_parameter("camera0/identifier",
+                            ".*simulated: uniform random.*", descriptor);
 
     descriptor.description = "Camera 1 identifier.";
-    this->declare_parameter("camera1", "", descriptor);
+    this->declare_parameter("camera1/identifier", "", descriptor);
 
     for (auto i = 0; i < 2; ++i) {
-      const std::string camera_name = "camera" + std::to_string(i);
+      const std::string camera_id = "camera" + std::to_string(i);
       const std::string camera_desc = "Camera " + std::to_string(i);
 
       descriptor.description = camera_desc + " topic.";
-      this->declare_parameter(camera_name + "_topic",
+      this->declare_parameter(camera_id + "/topic",
                               "stream" + std::to_string(i), descriptor);
 
       descriptor.description = camera_desc + " binning.";
-      this->declare_parameter(camera_name + "_binning", 1, descriptor);
+      this->declare_parameter(camera_id + "/binning", 1, descriptor);
 
       descriptor.description = camera_desc + " exposure time in microseconds.";
-      this->declare_parameter(camera_name + "_exposure_time_us", 1e4,
+      this->declare_parameter(camera_id + "/exposure_time_us", 10000,
                               descriptor);
 
-      descriptor.description = camera_desc + " image width.";
-      this->declare_parameter(camera_name + "_width", 640, descriptor);
-
-      descriptor.description = camera_desc + " image height.";
-      this->declare_parameter(camera_name + "_height", 480, descriptor);
+      descriptor.description = camera_desc + " image size.";
+      this->declare_parameter(camera_id + "/image_size",
+                              std::vector<int>{640, 480}, descriptor);
     }
 
     configure_publishers_();
@@ -160,9 +155,11 @@ class AcquireStreamer final : public rclcpp::Node {
 
   void configure_stream(uint8_t stream) {
     const std::string camera = "camera" + std::to_string(stream);
-    const std::string camera_name = this->get_parameter(camera).as_string();
-    if (camera_name
-            .empty()) {  // don't configure a stream if no camera is specified
+    const std::string camera_id =
+        this->get_parameter(camera + "/identifier").as_string();
+
+    // don't configure a stream if no camera is specified
+    if (camera_id.empty()) {
       return;
     }
 
@@ -173,19 +170,21 @@ class AcquireStreamer final : public rclcpp::Node {
     OK(acquire_get_configuration_metadata(runtime_, &meta));
 
     // camera configuration
-    DEVOK(device_manager_select(dm, DeviceKind_Camera, camera_name.c_str(),
-                                camera_name.size(),
+    DEVOK(device_manager_select(dm, DeviceKind_Camera, camera_id.c_str(),
+                                camera_id.size(),
                                 &props_.video[stream].camera.identifier));
 
     props_.video[stream].camera.settings.binning =
-        this->get_parameter(camera + "_binning").as_int();
+        this->get_parameter(camera + "/binning").as_int();
     props_.video[stream].camera.settings.pixel_type = SampleType_u8;
-    props_.video[stream].camera.settings.shape.x =
-        this->get_parameter(camera + "_width").as_int();
-    props_.video[stream].camera.settings.shape.y =
-        this->get_parameter(camera + "_height").as_int();
     props_.video[stream].camera.settings.exposure_time_us =
-        this->get_parameter(camera + "_exposure_time_us").as_double();
+        this->get_parameter(camera + "/exposure_time_us").as_int();
+
+    auto image_size = this->get_parameter(camera + "/image_size")
+                          .get_value<std::vector<int>>();
+    props_.video[stream].camera.settings.shape.x = image_size[0];
+    props_.video[stream].camera.settings.shape.y = image_size[1];
+
     props_.video[stream].max_frame_count = UINT64_MAX;
 
     // storage configuration
@@ -243,22 +242,11 @@ class AcquireStreamer final : public rclcpp::Node {
   }
 
   void configure_publishers_() {
-    auto keep_last = this->get_parameter("keep_last").as_int();
-
-    std::shared_ptr<rclcpp::QoS> qos;
-    if (keep_last >= 0) {
-      keep_last = std::max((int64_t)1, keep_last);
-      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepLast(keep_last),
-                                          rmw_qos_profile_sensor_data);
-    } else {
-      qos = std::make_shared<rclcpp::QoS>(rclcpp::KeepAll(),
-                                          rmw_qos_profile_sensor_data);
-    }
-
-    publishers_.at(0) =
-        this->create_publisher<sensor_msgs::msg::Image>("stream0", *qos);
-    publishers_.at(1) =
-        this->create_publisher<sensor_msgs::msg::Image>("stream1", *qos);
+    rclcpp::QoS qos(rclcpp::KeepAll(), rmw_qos_profile_sensor_data);
+    publishers_.at(0) = this->create_publisher<sensor_msgs::msg::Image>(
+        this->get_parameter("camera0/topic").as_string(), qos);
+    publishers_.at(1) = this->create_publisher<sensor_msgs::msg::Image>(
+        this->get_parameter("camera1/topic").as_string(), qos);
   }
 };
 
