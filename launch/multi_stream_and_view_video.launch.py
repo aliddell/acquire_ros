@@ -12,50 +12,148 @@ from launch.substitutions import (
 
 
 def generate_launch_description():
-    keep_last_arg = DeclareLaunchArgument(
-        "keep_last",
-        default_value=TextSubstitution(text="-1"),
-        description="Number of images to keep in the buffer.",
-    )
-
     log_level_arg = DeclareLaunchArgument(
         "log_level",
         default_value=TextSubstitution(text=str("WARN")),
         description="Logging level",
     )
 
-    camera00_arg = DeclareLaunchArgument(
-        "camera00",
-        default_value=TextSubstitution(text=".*simulated.*uniform random.*"),
-        description="Camera descriptor for the first process, first stream.",
+    keep_last_arg = DeclareLaunchArgument(
+        "keep_last",
+        default_value=TextSubstitution(text="-1"),
+        description="Number of images to keep in the buffer.",
     )
 
-    camera01_arg = DeclareLaunchArgument(
-        "camera01",
-        default_value=TextSubstitution(text=".*simulated.*radial.*"),
-        description="Camera descriptor for the first process, second stream.",
+    stream0_camera_args = {
+        "camera0/identifier": DeclareLaunchArgument(
+            "stream0/camera0/identifier",
+            default_value=TextSubstitution(text=".*simulated.*uniform random.*"),
+            description="Camera descriptor for the first stream.",
+        ),
+        "camera0/topic": DeclareLaunchArgument(
+            "stream0/camera0/topic",
+            default_value=TextSubstitution(text="stream0"),
+            description="Topic to publish to for the first stream.",
+        ),
+        "camera0/binning": DeclareLaunchArgument(
+            "stream0/camera0/binning",
+            default_value=TextSubstitution(text="1"),
+            description="Binning for the first stream.",
+        ),
+        "camera0/exposure_time_us": DeclareLaunchArgument(
+            "stream0/camera0/exposure_time_us",
+            default_value=TextSubstitution(text="10000"),
+            description="Exposure time for the first stream.",
+        ),
+        "camera0/image_size": DeclareLaunchArgument(
+            "stream0/camera0/image_size",
+            default_value=TextSubstitution(text="[640,480]"),
+            description="Image size for the first stream.",
+        ),
+        "camera1/identifier": DeclareLaunchArgument(
+            "stream0/camera1/identifier",
+            default_value=TextSubstitution(text=".*simulated.*radial sin.*"),
+            description="Camera descriptor for the second stream.",
+        ),
+        "camera1/topic": DeclareLaunchArgument(
+            "stream0/camera1/topic",
+            default_value=TextSubstitution(text="stream1"),
+            description="Topic to publish to for the second stream.",
+        ),
+        "camera1/binning": DeclareLaunchArgument(
+            "stream0/camera1/binning",
+            default_value=TextSubstitution(text="1"),
+            description="Binning for the second stream.",
+        ),
+        "camera1/exposure_time_us": DeclareLaunchArgument(
+            "stream0/camera1/exposure_time_us",
+            default_value=TextSubstitution(text="10000"),
+            description="Exposure time for the second stream.",
+        ),
+        "camera1/image_size": DeclareLaunchArgument(
+            "stream0/camera1/image_size",
+            default_value=TextSubstitution(text="[640,480]"),
+            description="Image size for the second stream.",
+        ),
+    }
+
+    stream1_camera_args = {
+        "camera0/identifier": DeclareLaunchArgument(
+            "stream1/camera0/identifier",
+            default_value=TextSubstitution(text=".*simulated.*uniform random.*"),
+            description="Camera descriptor for the first stream.",
+        ),
+        "camera0/topic": DeclareLaunchArgument(
+            "stream1/camera0/topic",
+            default_value=TextSubstitution(text="stream0"),
+            description="Topic to publish to for the first stream.",
+        ),
+        "camera0/binning": DeclareLaunchArgument(
+            "stream1/camera0/binning",
+            default_value=TextSubstitution(text="1"),
+            description="Binning for the first stream.",
+        ),
+        "camera0/exposure_time_us": DeclareLaunchArgument(
+            "stream1/camera0/exposure_time_us",
+            default_value=TextSubstitution(text="10000"),
+            description="Exposure time for the first stream.",
+        ),
+        "camera0/image_size": DeclareLaunchArgument(
+            "stream1/camera0/image_size",
+            default_value=TextSubstitution(text="[640,480]"),
+            description="Image size for the first stream.",
+        ),
+        "camera1/identifier": DeclareLaunchArgument(
+            "stream1/camera1/identifier",
+            default_value=TextSubstitution(text=".*simulated.*radial sin.*"),
+            description="Camera descriptor for the second stream.",
+        ),
+        "camera1/topic": DeclareLaunchArgument(
+            "stream1/camera1/topic",
+            default_value=TextSubstitution(text="stream1"),
+            description="Topic to publish to for the second stream.",
+        ),
+        "camera1/binning": DeclareLaunchArgument(
+            "stream1/camera1/binning",
+            default_value=TextSubstitution(text="1"),
+            description="Binning for the second stream.",
+        ),
+        "camera1/exposure_time_us": DeclareLaunchArgument(
+            "stream1/camera1/exposure_time_us",
+            default_value=TextSubstitution(text="10000"),
+            description="Exposure time for the second stream.",
+        ),
+        "camera1/image_size": DeclareLaunchArgument(
+            "stream1/camera1/image_size",
+            default_value=TextSubstitution(text="[640,480]"),
+            description="Image size for the second stream.",
+        ),
+    }
+
+    stream0_launch_args = {
+        "namespace": "acquire/first",
+        "log_level": LaunchConfiguration("log_level"),
+    }
+    stream0_launch_args.update(
+        {k: LaunchConfiguration("stream0/" + k) for k in stream0_camera_args.keys()}
     )
 
-    camera10_arg = DeclareLaunchArgument(
-        "camera10",
-        default_value=TextSubstitution(text=".*bfly.*"),
-        description="Camera descriptor for the second process, first stream.",
-    )
-
-    camera11_arg = DeclareLaunchArgument(
-        "camera11",
-        default_value=TextSubstitution(text=".*simulated.*radial.*"),
-        description="Camera descriptor for the second process, second stream.",
+    stream1_launch_args = {
+        "namespace": "acquire/second",
+        "log_level": LaunchConfiguration("log_level"),
+    }
+    stream1_launch_args.update(
+        {k: LaunchConfiguration("stream1/" + k) for k in stream1_camera_args.keys()}
     )
 
     return LaunchDescription(
         [
             log_level_arg,
             keep_last_arg,
-            camera00_arg,
-            camera01_arg,
-            camera10_arg,
-            camera11_arg,
+        ]
+        + list(stream0_camera_args.values())
+        + list(stream1_camera_args.values())
+        + [
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     [
@@ -69,11 +167,7 @@ def generate_launch_description():
                     ]
                 ),
                 launch_arguments={
-                    "namespace": "acquire/first",
-                    "log_level": LaunchConfiguration("log_level"),
-                    "keep_last": LaunchConfiguration("keep_last"),
-                    "camera0": LaunchConfiguration("camera00"),
-                    "camera1": LaunchConfiguration("camera01"),
+                    k.replace("stream0/", ""): v for k, v in stream0_launch_args.items()
                 }.items(),
             ),
             IncludeLaunchDescription(
@@ -89,11 +183,7 @@ def generate_launch_description():
                     ]
                 ),
                 launch_arguments={
-                    "namespace": "acquire/second",
-                    "log_level": LaunchConfiguration("log_level"),
-                    "keep_last": LaunchConfiguration("keep_last"),
-                    "camera0": LaunchConfiguration("camera10"),
-                    "camera1": LaunchConfiguration("camera11"),
+                    k.replace("stream1/", ""): v for k, v in stream1_launch_args.items()
                 }.items(),
             ),
         ]
